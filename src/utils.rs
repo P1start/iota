@@ -13,3 +13,7 @@ pub fn draw_cursor(x: uint, y: uint) {
 pub fn get_term_height() -> uint {
     rustbox::height()
 }
+
+pub fn get_term_width() -> uint {
+    rustbox::width()
+}
