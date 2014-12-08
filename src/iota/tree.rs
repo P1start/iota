@@ -1,18 +1,18 @@
+use std::sync::Arc;
+
 use view::View;
-use uibuf::UIBuffer;
 
 
-struct ViewTree<'vt> {
+pub struct ViewTree<'vt> {
     left: Option<Box<ViewTree<'vt>>>,
     right: Option<Box<ViewTree<'vt>>>,
     top: Option<Box<ViewTree<'vt>>>,
     bottom: Option<Box<ViewTree<'vt>>>,
-    leaf: Option<View<'vt>>,
-    uibuf: UIBuffer,
+    leaf: Option<Arc<View<'vt>>>,
 }
 
 impl<'vt> ViewTree<'vt> {
-    fn new(v: View<'vt>) -> ViewTree<'vt> {
+    pub fn new(v: Arc<View<'vt>>) -> ViewTree<'vt> {
         ViewTree {
             left: None,
             right: None,

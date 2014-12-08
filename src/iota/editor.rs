@@ -21,7 +21,7 @@ pub struct Editor<'e> {
     pub sender: Sender<rustbox::Event>,
 
     events: Receiver<rustbox::Event>,
-    view: View<'e>,
+    active: View<'e>,
 }
 
 impl<'e> Editor<'e> {
@@ -32,7 +32,7 @@ impl<'e> Editor<'e> {
         Editor {
             sender: send,
             events: recv,
-            view: view,
+            active: view,
             running: false,
         }
     }
@@ -48,8 +48,8 @@ impl<'e> Editor<'e> {
     }
 
     pub fn save_active_buffer(&mut self) {
-        let lines = &self.view.buffer.lines;
-        let path = Path::new(&self.view.buffer.file_path);
+        let lines = &self.active.buffer.lines;
+        let path = Path::new(&self.active.buffer.file_path);
 
         let mut file = match File::open_mode(&path, FileMode::Open, FileAccess::Write) {
             Ok(f) => f,
@@ -69,9 +69,9 @@ impl<'e> Editor<'e> {
     }
 
     pub fn draw(&mut self) {
-        self.view.draw();
-        self.view.draw_status();
-        self.view.draw_cursor();
+        self.active.draw();
+        self.active.draw_status();
+        self.active.draw_cursor();
     }
 
     pub fn start(&mut self) {
@@ -82,7 +82,7 @@ impl<'e> Editor<'e> {
 
     fn main_loop(&mut self) {
         while self.running {
-            self.view.clear();
+            self.active.clear();
             self.draw();
             rustbox::present();
             match self.events.recv() {
@@ -116,20 +116,20 @@ impl<'e> Editor<'e> {
 
         let key = k.unwrap();
         match key {
-            Key::Up        => { self.view.move_cursor(Direction::Up); }
-            Key::Down      => { self.view.move_cursor(Direction::Down); }
-            Key::Left      => { self.view.move_cursor(Direction::Left); }
-            Key::Right     => { self.view.move_cursor(Direction::Right); }
-            Key::Enter     => { self.view.insert_line(); }
+            Key::Up        => { self.active.move_cursor(Direction::Up); }
+            Key::Down      => { self.active.move_cursor(Direction::Down); }
+            Key::Left      => { self.active.move_cursor(Direction::Left); }
+            Key::Right     => { self.active.move_cursor(Direction::Right); }
+            Key::Enter     => { self.active.insert_line(); }
 
             // Tab inserts 4 spaces, rather than a \t
-            Key::Tab       => { self.view.insert_tab(); }
+            Key::Tab       => { self.active.insert_tab(); }
 
-            Key::Backspace => { self.view.delete_char(Direction::Left); }
-            Key::Delete    => { self.view.delete_char(Direction::Right); }
+            Key::Backspace => { self.active.delete_char(Direction::Left); }
+            Key::Delete    => { self.active.delete_char(Direction::Right); }
             Key::CtrlS     => { self.save_active_buffer(); }
             Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
-            Key::CtrlR     => { self.view.resize(); }
+            Key::CtrlR     => { self.active.resize(); }
 
             // TODO(greg): move these keys to event handlers of each mode
             // This block is for matching keys which will insert a char to the buffer
@@ -158,7 +158,7 @@ impl<'e> Editor<'e> {
             Key::U | Key::V | Key::W | Key::X |
             Key::Y | Key::Z | Key::LeftBrace |
             Key::Pipe       | Key::RightBrace |
-            Key::Tilde      | Key::Space => { self.view.insert_char(key.get_char().unwrap()) }
+            Key::Tilde      | Key::Space => { self.active.insert_char(key.get_char().unwrap()) }
 
             // default
             _              => { return EventStatus::NotHandled }
