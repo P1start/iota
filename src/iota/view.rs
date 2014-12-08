@@ -115,8 +115,9 @@ impl<'v> View<'v> {
 
     pub fn resize(&mut self) {
         let width = self.uibuf.get_width();
+        let height = self.uibuf.get_height();
         self.clear();
-        self.uibuf = UIBuffer::new(width, 15);
+        self.uibuf = UIBuffer::new(width / 2, height / 2);
     }
 
     pub fn move_cursor(&mut self, direction: Direction) {
