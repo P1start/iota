@@ -3,6 +3,7 @@ extern crate rustbox;
 use std::comm::{Receiver, Sender};
 use std::num;
 use std::io::{File, FileMode, FileAccess};
+use std::cell::RefCell;
 
 use super::Response;
 use cursor::Direction;
@@ -21,12 +22,12 @@ pub struct Editor<'e> {
     pub sender: Sender<rustbox::Event>,
 
     events: Receiver<rustbox::Event>,
-    active: View<'e>,
+    active: RefCell<View<'e>>,
 }
 
 impl<'e> Editor<'e> {
     pub fn new(filename: Option<String>) -> Editor<'e> {
-        let view = View::new(filename);
+        let view = RefCell::new(View::new(filename));
 
         let (send, recv) = channel();
         Editor {
@@ -48,8 +49,8 @@ impl<'e> Editor<'e> {
     }
 
     pub fn save_active_buffer(&mut self) {
-        let lines = &self.active.buffer.lines;
-        let path = Path::new(&self.active.buffer.file_path);
+        let lines = &self.active.borrow().buffer.lines;
+        let path = Path::new(&self.active.borrow().buffer.file_path);
 
         let mut file = match File::open_mode(&path, FileMode::Open, FileAccess::Write) {
             Ok(f) => f,
@@ -69,9 +70,9 @@ impl<'e> Editor<'e> {
     }
 
     pub fn draw(&mut self) {
-        self.active.draw();
-        self.active.draw_status();
-        self.active.draw_cursor();
+        self.active.borrow_mut().draw();
+        self.active.borrow_mut().draw_status();
+        self.active.borrow().draw_cursor();
     }
 
     pub fn start(&mut self) {
@@ -82,7 +83,7 @@ impl<'e> Editor<'e> {
 
     fn main_loop(&mut self) {
         while self.running {
-            self.active.clear();
+            self.active.borrow_mut().clear();
             self.draw();
             rustbox::present();
             if let rustbox::Event::KeyEvent(_, key, ch) = self.events.recv() {
@@ -111,20 +112,20 @@ impl<'e> Editor<'e> {
 
         let key = k.unwrap();
         match key {
-            Key::Up        => { self.active.move_cursor(Direction::Up); }
-            Key::Down      => { self.active.move_cursor(Direction::Down); }
-            Key::Left      => { self.active.move_cursor(Direction::Left); }
-            Key::Right     => { self.active.move_cursor(Direction::Right); }
-            Key::Enter     => { self.active.insert_line(); }
+            Key::Up        => { self.active.borrow_mut().move_cursor(Direction::Up); }
+            Key::Down      => { self.active.borrow_mut().move_cursor(Direction::Down); }
+            Key::Left      => { self.active.borrow_mut().move_cursor(Direction::Left); }
+            Key::Right     => { self.active.borrow_mut().move_cursor(Direction::Right); }
+            Key::Enter     => { self.active.borrow_mut().insert_line(); }
 
             // Tab inserts 4 spaces, rather than a \t
-            Key::Tab       => { self.active.insert_tab(); }
+            Key::Tab       => { self.active.borrow_mut().insert_tab(); }
 
-            Key::Backspace => { self.active.delete_char(Direction::Left); }
-            Key::Delete    => { self.active.delete_char(Direction::Right); }
+            Key::Backspace => { self.active.borrow_mut().delete_char(Direction::Left); }
+            Key::Delete    => { self.active.borrow_mut().delete_char(Direction::Right); }
             Key::CtrlS     => { self.save_active_buffer(); }
             Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
-            Key::CtrlR     => { self.active.resize(); }
+            Key::CtrlR     => { self.active.borrow_mut().resize(); }
 
             // TODO(greg): move these keys to event handlers of each mode
             // This block is for matching keys which will insert a char to the buffer
@@ -153,7 +154,7 @@ impl<'e> Editor<'e> {
             Key::U | Key::V | Key::W | Key::X |
             Key::Y | Key::Z | Key::LeftBrace |
             Key::Pipe       | Key::RightBrace |
-            Key::Tilde      | Key::Space => { self.active.insert_char(key.get_char().unwrap()) }
+            Key::Tilde      | Key::Space => { self.active.borrow_mut().insert_char(key.get_char().unwrap()) }
 
             // default
             _              => { return EventStatus::NotHandled }
